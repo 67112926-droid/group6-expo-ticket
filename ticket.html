@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>我的 GROUP6 EXPO 电子票</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      padding: 16px;
+      background: #050505;
+      color: #f5f5f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      margin: auto;
+      background: #111;
+      border-radius: 18px;
+      padding: 18px 16px 20px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.75);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .expo-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+
+    .back-btn {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #333;
+      background: #181818;
+      color: #f5f5f5;
+      cursor: pointer;
+    }
+
+    .hello { font-size: 14px; }
+
+    .highlight-name {
+      font-weight: 700;
+      color: #f6c453;
+    }
+
+    canvas {
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      background: #000;
+      cursor: pointer;
+      margin-top: 6px;
+      display: block;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #ccc;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 9px 0;
+      border-radius: 999px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-download {
+      background: linear-gradient(135deg, #f6c453, #f2a93b);
+      color: #151515;
+    }
+
+    .btn-download:active { transform: translateY(1px); }
+
+    .btn-seat {
+      background: #232323;
+      color: #f5f5f5;
+      border: 1px solid #333;
+    }
+
+    @media (min-width: 768px) {
+      body { padding: 36px 0; }
+      .container { max-width: 520px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top-bar">
+      <div class="expo-title">GROUP6 EXPO 2025</div>
+      <button class="back-btn" onclick="history.back()">返回修改名字</button>
+    </div>
+
+    <div class="hello">
+      欢迎你，<span class="highlight-name" id="nameDisplay"></span>
+    </div>
+
+    <canvas id="ticketCanvas"></canvas>
+
+    <div class="hint">
+      👉 点击上方电子票，可查看会场海报与座位图。<br />
+      也可以点击下方按钮下载你的专属电子票。
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-download" id="downloadBtn">
+        下载这张电子票
+      </button>
+      <button class="btn btn-seat" id="seatBtn">
+        查看会场海报与座位图
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // 等整页加载完再执行，避免找不到 canvas 等问题
+    window.addEventListener("load", function () {
+      // ① 解析 URL 里的 ?name=...
+      function getNameFromUrl() {
+        var search = window.location.search || "";
+        if (search.indexOf("?") === 0) {
+          search = search.substring(1);
+        }
+        var pairs = search.split("&");
+        for (var i = 0; i < pairs.length; i++) {
+          var parts = pairs[i].split("=");
+          if (parts[0] === "name") {
+            try {
+              return decodeURIComponent(parts[1] || "");
+            } catch (e) {
+              return parts[1] || "";
+            }
+          }
+        }
+        return "";
+      }
+
+      var name = getNameFromUrl();
+      if (!name) {
+        name = "Visitor"; // 没有传名字就用默认
+      }
+      document.getElementById("nameDisplay").textContent = name;
+
+      // ② 获取 canvas
+      var canvas = document.getElementById("ticketCanvas");
+      if (!canvas) {
+        alert("找不到 ticketCanvas 元素，请检查 id 是否被改动。");
+        return;
+      }
+      var ctx = canvas.getContext("2d");
+      if (!ctx) {
+        alert("当前浏览器不支持 canvas。");
+        return;
+      }
+
+      // ③ 加载票面背景图
+      var baseImage = new Image();
+
+      baseImage.onload = function () {
+        var w = baseImage.naturalWidth || baseImage.width;
+        var h = baseImage.naturalHeight || baseImage.height;
+
+        canvas.width = w;
+        canvas.height = h;
+
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(baseImage, 0, 0, w, h);
+
+        // 在 VISTOR 位置写名字（你想微调可以改这两个数）
+        ctx.font = 'bold 20px "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif';
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+
+        var x = 55;   // 横坐标
+        var y = 115;  // 纵坐标
+
+        ctx.fillText(name, x, y);
+      };
+
+      baseImage.onerror = function () {
+        alert("⚠️ 无法加载票.jpg，请确认：\n1）ticket.html 与 票.jpg 在同一文件夹\n2）文件名正好是：票.jpg（大小写一致）");
+      };
+
+      // ★★ 这里的文件名必须和你文件夹里的背景图名字一模一样 ★★
+      baseImage.src = "票.jpg";
+
+      // ④ 打开座位图海报
+      function openSeatPoster() {
+        // 与 ticket.html 在同一文件夹的海报图片
+        window.location.href = "海报.jpg";
+      }
+
+      canvas.addEventListener("click", openSeatPoster);
+      document.getElementById("seatBtn").addEventListener("click", openSeatPoster);
+
+      // ⑤ 下载电子票
+      document.getElementById("downloadBtn").addEventListener("click", function () {
+        var link = document.createElement("a");
+        link.download = "group6-expo-ticket.png";
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      });
+    });
+  </script>
+</body>
+</html>
